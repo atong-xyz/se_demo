@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flag toggle demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #fafafa;
+      color: #111;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      flex: 1;
+      width: 100%;
+      max-width: 64rem;
+      margin: 0 auto;
+      align-items: stretch;
+    }
+    @media (max-width: 720px) {
+      .split { grid-template-columns: 1fr; }
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      padding: 1.5rem 1.25rem 0;
+      border-right: 1px solid #e0e0e0;
+    }
+    .panel:last-child { border-right: none; }
+    @media (max-width: 720px) {
+      .panel { border-right: none; border-bottom: 1px solid #e0e0e0; }
+      .panel:last-child { border-bottom: none; }
+    }
+    h1 { font-size: 1.1rem; margin: 0; }
+    .panel-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      min-height: 2.75rem;
+      margin: 0.75rem 0 0.5rem;
+    }
+    .row { display: flex; align-items: center; gap: 1rem; }
+    .switch { position: relative; display: inline-block; width: 3rem; height: 1.6rem; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; cursor: pointer; border-radius: 1.6rem;
+      background: #ccc; transition: 0.2s;
+    }
+    .slider::before {
+      content: ""; position: absolute; height: 1.2rem; width: 1.2rem; left: 0.2rem; bottom: 0.2rem;
+      background: #fff; border-radius: 50%; transition: 0.2s;
+    }
+    input:checked + .slider { background: #3d3; }
+    input:checked + .slider::before { transform: translateX(1.4rem); }
+    input:disabled + .slider { opacity: 0.5; cursor: wait; }
+    .status { font-weight: 600; margin: 0; }
+    .detail-block {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      margin-bottom: 0.5rem;
+    }
+    .detail-block h2 { font-size: 0.95rem; margin: 0.75rem 0 0.5rem; }
+    pre.reason {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.75rem;
+      line-height: 1.45;
+      background: #f4f4f4;
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin: 0;
+      width: 100%;
+      height: 12.5rem;
+      min-height: 12.5rem;
+      max-height: 12.5rem;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .context-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      max-width: 64rem;
+      margin: 0 auto;
+      padding: 1rem 1.25rem 0;
+      width: 100%;
+    }
+    .context-bar label { font-size: 0.9rem; font-weight: 600; }
+    .context-bar select {
+      font: inherit;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      min-width: 12rem;
+    }
+    .context-hint { font-size: 0.8rem; color: #555; }
+    #err { color: #c00; font-size: 0.85rem; padding: 0 1rem 1rem; text-align: center; }
+    .visual {
+      width: 100%;
+      margin-top: auto;
+      padding: 1rem 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      min-height: 14rem;
+      transition: background 0.3s ease;
+    }
+    .visual.off { background: linear-gradient(to top, #e8e8e8 0%, transparent 100%); }
+    .visual.on { background: linear-gradient(to top, #1a0a12 0%, #2d1020 50%, transparent 100%); }
+    .visual--color { background: linear-gradient(to top, #eee 0%, transparent 100%); }
+    .visual-frame {
+      position: relative;
+      width: min(100%, 20rem);
+      aspect-ratio: 1;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .visual img {
+      position: absolute;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
+      opacity: 0;
+      transform: scale(0.96);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      pointer-events: none;
+    }
+    .visual img.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .visual img.img-off { width: 72%; }
+    .visual img.img-on { width: 100%; }
+    .color-patch {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+      transition: background-color 0.35s ease;
+    }
+    .color-label {
+      font-size: 0.85rem;
+      color: #555;
+      margin: 0.65rem 0 0;
+      text-align: center;
+      width: min(100%, 20rem);
+    }
+  </style>
+</head>
+<body>
+  <div class="context-bar">
+    <label for="context-select">Context</label>
+    <select id="context-select" aria-label="Evaluation context"></select>
+    <span id="context-hint" class="context-hint"></span>
+  </div>
+  <div class="split">
+    <section class="panel panel-left">
+      <h1>amazing-feature-1</h1>
+      <div class="panel-controls row">
+        <label class="switch">
+          <input id="toggle" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+        <p id="status-amazing" class="status">—</p>
+      </div>
+      <div class="detail-block">
+        <h2>Evaluation detail</h2>
+        <pre id="reason-amazing" class="reason">—</pre>
+      </div>
+      <footer id="visual-amazing" class="visual off" aria-live="polite">
+        <div class="visual-frame">
+          <img id="img-off" class="img-off visible" src="/img/sad_blob.gif" alt="Flag is off" />
+          <img id="img-on" class="img-on" src="/img/fireworks.gif" alt="Flag is on" />
+        </div>
+      </footer>
+    </section>
+
+    <section class="panel panel-right">
+      <h1>flag-color-experience</h1>
+      <div class="panel-controls">
+        <p id="status-color" class="status">—</p>
+      </div>
+      <div class="detail-block">
+        <h2>Evaluation detail</h2>
+        <pre id="reason-color" class="reason">—</pre>
+      </div>
+      <footer class="visual visual--color" aria-live="polite">
+        <div class="visual-frame">
+          <div id="color-patch" class="color-patch" title="Evaluated color"></div>
+        </div>
+        <p id="color-label" class="color-label">—</p>
+      </footer>
+    </section>
+  </div>
+
+  <p id="err"></p>
+
+  <script>
+    const ENV = 'production';
+    const FLAG_AMAZING = 'amazing-feature-1';
+    const FLAG_COLOR = 'flag-color-experience';
+    const $ = (id) => document.getElementById(id);
+    let busy = false;
+
+    function colorToCss(value) {
+      const v = String(value ?? '').trim();
+      if (!v) return '#e0e0e0';
+      return v;
+    }
+
+    function updateAmazingVisual(on) {
+      const el = $('visual-amazing');
+      el.classList.toggle('on', on);
+      el.classList.toggle('off', !on);
+      $('img-off').classList.toggle('visible', !on);
+      $('img-on').classList.toggle('visible', on);
+    }
+
+    function isFlagOn(evaluation) {
+      if (evaluation.flagOn != null) return evaluation.flagOn;
+      return evaluation.reason?.kind !== 'OFF';
+    }
+
+    function applyAmazing(evaluation, syncToggle = true) {
+      if (!evaluation) return;
+      $('reason-amazing').textContent = JSON.stringify(evaluation, null, 2);
+      // $('status-amazing').textContent = (evaluation.value ? 'ON' : 'OFF') + ' (SDK)';
+      $('status-amazing').textContent = 'Flag is ' + (evaluation.flagOn ? 'ON' : 'OFF');
+      updateAmazingVisual(!!evaluation.value);
+      if (syncToggle && !busy) $('toggle').checked = isFlagOn(evaluation);
+    }
+
+    async function loadFlagOnState() {
+      try {
+        const r = await fetch('/api/flag');
+        if (!r.ok || busy) return;
+        const flag = await r.json();
+        $('toggle').checked = !!flag.environments?.[ENV]?.on;
+      } catch (_) { /* ignore */ }
+    }
+
+    function applyColor(evaluation) {
+      if (!evaluation) return;
+      $('reason-color').textContent = JSON.stringify(evaluation, null, 2);
+      const color = evaluation.value;
+      $('status-color').textContent = `${JSON.stringify(color)}`;
+      $('color-patch').style.backgroundColor = colorToCss(color);
+      $('color-label').textContent = String(color);
+    }
+
+    let latestPayload = null;
+    let selectedContextIndex = 0;
+
+    function getContextEntry(payload) {
+      if (!payload?.evaluationsByContext?.length) return null;
+      return payload.evaluationsByContext[selectedContextIndex] ?? payload.evaluationsByContext[0];
+    }
+
+    function applyPayload(payload, syncToggle = true) {
+      latestPayload = payload;
+      const entry = getContextEntry(payload);
+      if (!entry) return;
+      applyAmazing(entry.flags[FLAG_AMAZING], syncToggle);
+      applyColor(entry.flags[FLAG_COLOR]);
+      $('context-hint').textContent = `Viewing ${entry.context.key} · metric: ${payload.metricKey ?? 'binary-metric'}`;
+    }
+
+    function populateContextSelect(payload) {
+      const select = $('context-select');
+      const entries = payload?.evaluationsByContext ?? [];
+      if (!entries.length) return;
+      const prev = select.value;
+      select.innerHTML = entries
+        .map((e, i) => `<option value="${i}">${e.context.key}</option>`)
+        .join('');
+      const idx = entries.findIndex((_, i) => String(i) === prev);
+      selectedContextIndex = idx >= 0 ? idx : Math.min(selectedContextIndex, entries.length - 1);
+      select.value = String(selectedContextIndex);
+    }
+
+    async function loadConfig() {
+      const r = await fetch('/api/config');
+      if (!r.ok) return;
+      const cfg = await r.json();
+      $('context-hint').textContent = `${cfg.contextCount} context(s) · loops on each evaluation`;
+    }
+
+    function connectStream() {
+      const es = new EventSource('/api/events');
+      es.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          populateContextSelect(payload);
+          applyPayload(payload, !busy);
+        } catch (e) {
+          $('err').textContent = e.message;
+        }
+      };
+      es.onerror = () => {
+        $('err').textContent = 'Lost connection to live updates; refresh the page.';
+      };
+    }
+
+    $('context-select').addEventListener('change', () => {
+      selectedContextIndex = Number($('context-select').value);
+      if (latestPayload) applyPayload(latestPayload, false);
+    });
+
+    async function setFlag(on) {
+      $('err').textContent = '';
+      busy = true;
+      $('toggle').disabled = true;
+      const r = await fetch('/api/flag', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          comment: 'toggle from demo UI',
+          environmentKey: ENV,
+          instructions: [{ kind: on ? 'turnFlagOn' : 'turnFlagOff' }],
+        }),
+      });
+      if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+    }
+
+    $('toggle').addEventListener('change', () => {
+      if (busy) return;
+      setFlag($('toggle').checked).catch((e) => {
+        $('err').textContent = e.message;
+      }).finally(() => {
+        busy = false;
+        $('toggle').disabled = false;
+      });
+    });
+
+    loadConfig();
+    loadFlagOnState();
+    connectStream();
+  </script>
+</body>
+</html>
