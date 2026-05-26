@@ -89,7 +89,7 @@ Each context includes attributes used for targeting demos, for example:
   "kind": "user",
   "key": "sample-user-key-a-1",
   "name": "Sample User A 1",
-  "tier": "gold",
+  "tier": "premium",
   "region": "us-east-1",
   "platform": "web"
 }
